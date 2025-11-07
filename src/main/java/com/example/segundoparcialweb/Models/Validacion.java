@@ -12,7 +12,6 @@ import java.util.Objects;
 @Data
 @Entity
 @Table
-@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Validacion {
