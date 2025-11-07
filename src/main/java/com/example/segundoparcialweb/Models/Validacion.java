@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -20,15 +19,33 @@ public class Validacion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
+
+    @Column(length = 50)
     private String email;
+
+    @Column(length = 10)
     private String documento;
-    private LocalDate fecha;
+
+    private LocalDateTime fecha;
+
+    @Column(length = 20)
     private String estado; // Pendiente o Validada
-    @Column(unique = true)
-    private String token;
-    @Column(unique = true)
-    private String codigo;
+
+    @Column(length = 100)
+    private String token; // único
+
+    @Column(length = 10)
+    private String codigo; // único
+
+    private LocalDateTime creadoEn;
+
+    public Validacion() {}
+
+    @PrePersist
+    public void prePersist() {
+        creadoEn = LocalDateTime.now();
+    }
 
     @Override
     public boolean equals(Object o) {

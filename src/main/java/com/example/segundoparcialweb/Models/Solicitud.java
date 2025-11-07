@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -19,7 +20,7 @@ public class Solicitud {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     private LocalDate fecha;
 
@@ -31,16 +32,18 @@ public class Solicitud {
     @JoinColumn(name = "codeudor_id")
     private Persona codeudor;
 
-    private java.math.BigDecimal valor;
+    @Column(precision = 10, scale = 0)
+    private BigDecimal valor;
 
     @ManyToOne
     @JoinColumn(name = "estado_id")
     private Estado estado;
 
+    @Column(length = 10)
+    private String codigoRadicado;
+
     @Column(columnDefinition = "text")
     private String observacion;
-
-    private String codigoRadicado; // varchar(10)
 
     @Override
     public boolean equals(Object o) {

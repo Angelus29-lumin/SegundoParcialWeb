@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.util.Objects;
 
 @Entity
@@ -18,8 +17,14 @@ import java.util.Objects;
 public class Estado {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-    private String descripcion; // varchar(20)
+    private Long id;
+
+    @Column(length = 20, unique = true)
+    private String descripcion;
+
+    public Estado(String descripcion) {
+        this.descripcion = descripcion;
+    }
 
     @Override
     public boolean equals(Object o) {

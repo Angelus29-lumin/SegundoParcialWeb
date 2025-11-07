@@ -18,11 +18,21 @@ import java.util.Objects;
 public class Persona {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-    private String documento; // varchar(10)
-    private String nombre; // varchar(100)
-    private String email; // varchar(50)
-    private String telefono; // varchar(10)
+    private Long id;
+
+    @Column(length = 10)
+    private String documento;
+
+    @Column(length = 100)
+    private String nombre;
+
+    @Column(length = 50)
+    private String email;
+
+    @Column(length = 20)
+    private String telefono;
+
+    @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
     @Override
