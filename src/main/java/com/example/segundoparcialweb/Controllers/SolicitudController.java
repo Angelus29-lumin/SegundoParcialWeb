@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping("/solicitud")
 public class SolicitudController {
     @Autowired
     private SolicitudService solicitudService;

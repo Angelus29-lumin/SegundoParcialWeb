@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping
+@RequestMapping("/validacion")
 public class ValidacionController {
 
     @Autowired
     private ValidacionService validacionService;
 
-    @PostMapping
+    @PostMapping("/crear")
     public ResponseEntity<CrearValidacionResponse> crear(@RequestBody CrearValidacionRequest req) {
         return ResponseEntity.ok(validacionService.crearValidacion(req));
     }
