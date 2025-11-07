@@ -1,0 +1,33 @@
+Service 1 POST validacionEmail
+{
+  "email": "juan.aguirre@gmail.com",
+  "documento": "1234567890"
+}
+Guardar el Token que genere este Servicio para luego validarlo
+
+
+Service 2 POST validar-Token
+coloca el token que se genero en el anterior
+
+
+Servicio 3 POST registarSolicitud
+
+{
+  "solicitante": {
+    "documento": "1234567890",
+    "nombre": "Juan Aguirre",
+    "email": "juan.aguirre@gmail.com",
+    "telefono": "3001234567",
+    "fechaNacimiento": "1990-05-15"
+  },
+  "codeudor": {
+    "documento": "9876543210",
+    "nombre": "Anita Gonzales",
+    "email": "anita.gonzales@gmail.com",
+    "telefono": "3109876543",
+    "fechaNacimiento": "1985-08-20"
+  },
+  "observacion": "Solicitud de crédito educativo para maestría"
+}
+
+

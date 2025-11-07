@@ -2,16 +2,11 @@ package com.example.segundoparcialweb.Models;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.Objects;
-import jakarta.persistence.*;
-import lombok.*;
 
-import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor

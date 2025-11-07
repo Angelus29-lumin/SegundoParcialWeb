@@ -51,6 +51,15 @@ public class SolicitudService {
     // Servicio 3: Crear solicitud de validación de email
     @Transactional
     public ValidacionResponseDTO crearValidacionEmail(ValidacionRequestDTO request) {
+        // Validar que el email no esté vacío
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("El email es obligatorio");
+        }
+
+        if (request.getDocumento() == null || request.getDocumento().trim().isEmpty()) {
+            throw new RuntimeException("El documento es obligatorio");
+        }
+
         String token = UUID.randomUUID().toString();
         String codigo = generarCodigo(6);
 
@@ -71,25 +80,33 @@ public class SolicitudService {
     // Servicio 4: Registro de solicitud
     @Transactional
     public SolicitudResponseDTO registrarSolicitud(SolicitudRequestDTO request) {
+        // Validar que los datos no sean nulos
+        if (request.getSolicitante() == null || request.getCodeudor() == null) {
+            throw new RuntimeException("Debe proporcionar datos del solicitante y codeudor");
+        }
+
         // Validar que el codeudor y solicitante sean distintos
         if (request.getSolicitante().getDocumento().equals(request.getCodeudor().getDocumento())) {
             throw new RuntimeException("El solicitante y codeudor no pueden ser la misma persona");
         }
 
-        // Validar datos de correspondencia
-        if (request.getSolicitante().getEmail().equals(request.getCodeudor().getEmail()) ||
-                request.getSolicitante().getTelefono().equals(request.getCodeudor().getTelefono())) {
-            throw new RuntimeException("El solicitante y codeudor no pueden tener los mismos datos de contacto");
+        // Validar datos de correspondencia (correo y teléfono)
+        if (request.getSolicitante().getEmail().equals(request.getCodeudor().getEmail())) {
+            throw new RuntimeException("El solicitante y codeudor no pueden tener el mismo correo");
         }
 
-        // Validar que el correo esté validado
+        if (request.getSolicitante().getTelefono().equals(request.getCodeudor().getTelefono())) {
+            throw new RuntimeException("El solicitante y codeudor no pueden tener el mismo teléfono");
+        }
+
+        // Validar que el correo del solicitante esté validado
         Optional<Validacion> validacionOpt = validacionRepository.findByEmailAndEstado(
                 request.getSolicitante().getEmail(), "Validada");
         if (validacionOpt.isEmpty()) {
             throw new RuntimeException("El correo del solicitante no está validado");
         }
 
-        // Validar que el solicitante no tenga solicitudes activas
+        // Validar que el solicitante no tenga solicitudes activas (Aprobada o Solicitud)
         List<Solicitud> solicitudesActivas = solicitudRepository
                 .findActiveSolicitudesBySolicitante(request.getSolicitante().getDocumento());
         if (!solicitudesActivas.isEmpty()) {
@@ -103,14 +120,16 @@ public class SolicitudService {
         Persona codeudor = personaRepository.findByDocumento(request.getCodeudor().getDocumento())
                 .orElse(crearPersona(request.getCodeudor()));
 
-        // Determinar estado
+        // Determinar estado según si tiene solicitudes rechazadas previas
         Optional<Solicitud> solicitudRechazada = solicitudRepository
                 .findRechazadaSolicitudBySolicitante(request.getSolicitante().getDocumento());
 
         Estado estado;
         if (solicitudRechazada.isPresent()) {
+            // Si tiene una solicitud rechazada, la nueva también será rechazada
             estado = obtenerEstado("Rechazada");
         } else {
+            // Si no tiene rechazadas, pasa a estado "Solicitud"
             estado = obtenerEstado("Solicitud");
         }
 
@@ -119,7 +138,7 @@ public class SolicitudService {
         solicitud.setFecha(LocalDate.now());
         solicitud.setSolicitante(solicitante);
         solicitud.setCodeudor(codeudor);
-        solicitud.setValor(BigDecimal.ZERO); // Valor por defecto
+        solicitud.setValor(BigDecimal.ZERO);
         solicitud.setEstado(estado);
         solicitud.setObservacion(request.getObservacion());
         solicitud.setCodigoRadicado(generarCodigoRadicado());
@@ -136,6 +155,11 @@ public class SolicitudService {
     // Servicio 5: Validar token
     @Transactional
     public boolean validarToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            throw new RuntimeException("El token es obligatorio");
+        }
+
+        // Verificar que el token no haya vencido (15 minutos)
         LocalDateTime fechaLimite = LocalDateTime.now().minusMinutes(15);
         Optional<Validacion> validacionOpt = validacionRepository.findValidToken(token, fechaLimite);
 
@@ -143,6 +167,7 @@ public class SolicitudService {
             throw new RuntimeException("Token inválido o vencido");
         }
 
+        // Cambiar estado a "Validada"
         Validacion validacion = validacionOpt.get();
         validacion.setEstado("Validada");
         validacionRepository.save(validacion);
@@ -171,20 +196,22 @@ public class SolicitudService {
     }
 
     private String generarCodigoRadicado() {
-        // Genera códigos como "R5344001" (8 caracteres)
-        String timestamp = String.valueOf(System.currentTimeMillis());
-        return "R" + timestamp.substring(timestamp.length() - 7);
+        // Genera códigos como "eed43rd" (7-8 caracteres alfanuméricos)
+        String caracteres = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder codigo = new StringBuilder();
+        for (int i = 0; i < 7; i++) {
+            int index = (int) (Math.random() * caracteres.length());
+            codigo.append(caracteres.charAt(index));
+        }
+        return codigo.toString();
     }
 
     private Estado obtenerEstado(String descripcionEstado) {
         return estadoRepository.findByDescripcion(descripcionEstado)
                 .orElseGet(() -> {
-                    // Si no existe, lo crea automáticamente
                     Estado nuevoEstado = new Estado();
                     nuevoEstado.setDescripcion(descripcionEstado);
-                    Estado estadoGuardado = estadoRepository.save(nuevoEstado);
-                    System.out.println("🆕 Estado creado automáticamente: " + descripcionEstado);
-                    return estadoGuardado;
+                    return estadoRepository.save(nuevoEstado);
                 });
     }
 }
