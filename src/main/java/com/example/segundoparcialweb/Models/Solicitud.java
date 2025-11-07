@@ -6,56 +6,44 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.*;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Objects;
 
-@Entity
-@Table
 @Data
+@Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Table(name = "solicitud")
 public class Solicitud {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
+    @Column(name = "fecha", nullable = false)
     private LocalDate fecha;
 
     @ManyToOne
-    @JoinColumn(name = "solicitante_id")
+    @JoinColumn(name = "solicitante_id", nullable = false)
     private Persona solicitante;
 
     @ManyToOne
-    @JoinColumn(name = "codeudor_id")
+    @JoinColumn(name = "codeudor_id", nullable = false)
     private Persona codeudor;
 
-    @Column(precision = 10, scale = 0)
+    @Column(name = "valor", precision = 10, scale = 0)
     private BigDecimal valor;
 
     @ManyToOne
-    @JoinColumn(name = "estado_id")
+    @JoinColumn(name = "estado_id", nullable = false)
     private Estado estado;
 
-    @Column(length = 10)
-    private String codigoRadicado;
-
-    @Column(columnDefinition = "text")
+    @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Solicitud)) return false;
-        Solicitud solicitud = (Solicitud) o;
-        return Objects.equals(id, solicitud.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
+    @Column(name = "codigo_radicado", length = 10, unique = true)
+    private String codigoRadicado;
 
 }

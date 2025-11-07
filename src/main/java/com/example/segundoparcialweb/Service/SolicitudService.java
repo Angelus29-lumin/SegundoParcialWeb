@@ -1,19 +1,16 @@
 package com.example.segundoparcialweb.Service;
-
-import com.example.segundoparcialweb.DTO.RegistroSolicitudRequest;
-import com.example.segundoparcialweb.DTO.SolicitudListadoDTO;
-import com.example.segundoparcialweb.Exception.ApiException;
-import com.example.segundoparcialweb.Models.Estado;
-import com.example.segundoparcialweb.Models.Persona;
-import com.example.segundoparcialweb.Models.Solicitud;
-import com.example.segundoparcialweb.Repositories.EstadoRepository;
-import com.example.segundoparcialweb.Repositories.PersonaRepository;
-import com.example.segundoparcialweb.Repositories.SolicitudRepository;
+import com.example.segundoparcialweb.DTO.*;
+import com.example.segundoparcialweb.Repository.*;
+import com.example.segundoparcialweb.Models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -21,115 +18,173 @@ import java.util.stream.Collectors;
 public class SolicitudService {
 
     @Autowired
-    private  PersonaRepository personaRepository;
-    @Autowired
     private SolicitudRepository solicitudRepository;
+
+    @Autowired
+    private PersonaRepository personaRepository;
+
     @Autowired
     private EstadoRepository estadoRepository;
+
     @Autowired
-    private  ValidacionService validacionService;
+    private ValidacionRepository validacionRepository;
 
-
-    public List<SolicitudListadoDTO> listarSolicitudes() {
-        List<Solicitud> all = solicitudRepository.findAll();
-        return all.stream().map(this::toListadoDTO).collect(Collectors.toList());
+    // Servicio 2: Listar solicitudes
+    public List<SolicitudDTO> listarSolicitudes() {
+        List<Solicitud> solicitudes = solicitudRepository.findAllWithDetails();
+        return solicitudes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
-    private SolicitudListadoDTO toListadoDTO(Solicitud s) {
-        SolicitudListadoDTO dto = new SolicitudListadoDTO();
-        dto.setId(s.getId());
-        dto.setFecha(s.getFecha().toString());
-        dto.setSolicitante(s.getSolicitante() != null ? s.getSolicitante().getNombre() : null);
-        dto.setCodeudor(s.getCodeudor() != null ? s.getCodeudor().getNombre() : null);
-        dto.setEstado(s.getEstado() != null ? s.getEstado().getDescripcion() : null);
-        dto.setCodigo_radicado(s.getCodigoRadicado());
-        return dto;
+    private SolicitudDTO convertToDTO(Solicitud solicitud) {
+        return new SolicitudDTO(
+                solicitud.getId(),
+                solicitud.getFecha(),
+                solicitud.getSolicitante().getNombre(),
+                solicitud.getCodeudor().getNombre(),
+                solicitud.getEstado().getDescripcion(),
+                solicitud.getCodigoRadicado()
+        );
     }
 
-    public Solicitud registrarSolicitud(RegistroSolicitudRequest req) {
-        // Validaciones según enunciado
-        RegistroSolicitudRequest.PersonaIn solIn = req.getSolicitante();
-        RegistroSolicitudRequest.PersonaIn codeuIn = req.getCodeudor();
-        if (solIn == null || codeuIn == null) {
-            throw new ApiException("Solicitante y codeudor son requeridos");
+    // Servicio 3: Crear solicitud de validación de email
+    @Transactional
+    public ValidacionResponseDTO crearValidacionEmail(ValidacionRequestDTO request) {
+        String token = UUID.randomUUID().toString();
+        String codigo = generarCodigo(6);
+
+        Validacion validacion = new Validacion(
+                request.getEmail(),
+                request.getDocumento(),
+                LocalDateTime.now(),
+                "Pendiente",
+                token,
+                codigo
+        );
+
+        validacionRepository.save(validacion);
+
+        return new ValidacionResponseDTO(token, codigo);
+    }
+
+    // Servicio 4: Registro de solicitud
+    @Transactional
+    public SolicitudResponseDTO registrarSolicitud(SolicitudRequestDTO request) {
+        // Validar que el codeudor y solicitante sean distintos
+        if (request.getSolicitante().getDocumento().equals(request.getCodeudor().getDocumento())) {
+            throw new RuntimeException("El solicitante y codeudor no pueden ser la misma persona");
         }
 
-        if (solIn.getDocumento().equalsIgnoreCase(codeuIn.getDocumento())) {
-            throw new ApiException("El codeudor y solicitante deben ser distintos (documento).");
+        // Validar datos de correspondencia
+        if (request.getSolicitante().getEmail().equals(request.getCodeudor().getEmail()) ||
+                request.getSolicitante().getTelefono().equals(request.getCodeudor().getTelefono())) {
+            throw new RuntimeException("El solicitante y codeudor no pueden tener los mismos datos de contacto");
         }
 
-        if (solIn.getEmail().equalsIgnoreCase(codeuIn.getEmail())
-                || solIn.getTelefono().equalsIgnoreCase(codeuIn.getTelefono())) {
-            throw new ApiException("Solicitante y codeudor no pueden compartir email o teléfono.");
+        // Validar que el correo esté validado
+        Optional<Validacion> validacionOpt = validacionRepository.findByEmailAndEstado(
+                request.getSolicitante().getEmail(), "Validada");
+        if (validacionOpt.isEmpty()) {
+            throw new RuntimeException("El correo del solicitante no está validado");
         }
 
-        // validar que correo del solicitante esté validado previamente
-        if (!validacionService.isEmailValidado(solIn.getEmail())) {
-            throw new ApiException("El correo del solicitante no está validado.");
+        // Validar que el solicitante no tenga solicitudes activas
+        List<Solicitud> solicitudesActivas = solicitudRepository
+                .findActiveSolicitudesBySolicitante(request.getSolicitante().getDocumento());
+        if (!solicitudesActivas.isEmpty()) {
+            throw new RuntimeException("El solicitante ya tiene una solicitud en estado Solicitud o Aprobada");
         }
 
-        // buscar persona solicitante o crear
-        Persona solicitante = personaRepository.findByDocumento(solIn.getDocumento())
-                .orElseGet(() -> {
-                    Persona p = new Persona();
-                    p.setDocumento(solIn.getDocumento());
-                    p.setNombre(solIn.getNombre());
-                    p.setEmail(solIn.getEmail());
-                    p.setTelefono(solIn.getTelefono());
-                    if (solIn.getFecha_nacimiento() != null) p.setFechaNacimiento(LocalDate.parse(solIn.getFecha_nacimiento()));
-                    return personaRepository.save(p);
-                });
+        // Buscar o crear personas
+        Persona solicitante = personaRepository.findByDocumento(request.getSolicitante().getDocumento())
+                .orElse(crearPersona(request.getSolicitante()));
 
-        Persona codeudor = personaRepository.findByDocumento(codeuIn.getDocumento())
-                .orElseGet(() -> {
-                    Persona p = new Persona();
-                    p.setDocumento(codeuIn.getDocumento());
-                    p.setNombre(codeuIn.getNombre());
-                    p.setEmail(codeuIn.getEmail());
-                    p.setTelefono(codeuIn.getTelefono());
-                    if (codeuIn.getFecha_nacimiento() != null) p.setFechaNacimiento(LocalDate.parse(codeuIn.getFecha_nacimiento()));
-                    return personaRepository.save(p);
-                });
+        Persona codeudor = personaRepository.findByDocumento(request.getCodeudor().getDocumento())
+                .orElse(crearPersona(request.getCodeudor()));
 
-        // verificar si solicitante ya tiene solicitud aprobada o en estado "Solicitud"
-        List<Solicitud> porSolicitante = solicitudRepository.findBySolicitante(solicitante);
-        boolean tieneAprobada = porSolicitante.stream()
-                .anyMatch(s -> s.getEstado() != null && "Aprobada".equalsIgnoreCase(s.getEstado().getDescripcion()));
-        if (tieneAprobada) {
-            throw new ApiException("El solicitante ya tiene una solicitud Aprobada.");
-        }
-        boolean tieneSolicitudPendiente = porSolicitante.stream()
-                .anyMatch(s -> s.getEstado() != null && "Solicitud".equalsIgnoreCase(s.getEstado().getDescripcion()));
-        if (tieneSolicitudPendiente) {
-            throw new ApiException("El solicitante ya tiene una solicitud en estado Solicitud.");
-        }
+        // Determinar estado
+        Optional<Solicitud> solicitudRechazada = solicitudRepository
+                .findRechazadaSolicitudBySolicitante(request.getSolicitante().getDocumento());
 
-        // si existió solicitud Rechazada -> registrar como Rechazada (según enunciado: "Si tiene una solicitud Rechazada se debe registrar la solicitud en estado rechazado.")
-        boolean tuvoRechazada = porSolicitante.stream()
-                .anyMatch(s -> s.getEstado() != null && "Rechazada".equalsIgnoreCase(s.getEstado().getDescripcion()));
         Estado estado;
-        if (tuvoRechazada) {
-            estado = estadoRepository.findByDescripcion("Rechazada").orElseThrow(() -> new ApiException("Estado Rechazada no existe"));
+        if (solicitudRechazada.isPresent()) {
+            estado = obtenerEstado("Rechazada");
         } else {
-            estado = estadoRepository.findByDescripcion("Solicitud").orElseThrow(() -> new ApiException("Estado Solicitud no existe"));
+            estado = obtenerEstado("Solicitud");
         }
 
-        Solicitud s = new Solicitud();
-        s.setFecha(LocalDate.now());
-        s.setSolicitante(solicitante);
-        s.setCodeudor(codeudor);
-        s.setValor(req.getValor() != null ? java.math.BigDecimal.valueOf(req.getValor()) : java.math.BigDecimal.ZERO);
-        s.setEstado(estado);
-        // generar codigo_radidado (ej: UUID truncated)
-        s.setCodigoRadicado(UUID.randomUUID().toString().substring(0, 8));
-        s.setObservacion(req.getObservacion());
+        // Crear solicitud
+        Solicitud solicitud = new Solicitud();
+        solicitud.setFecha(LocalDate.now());
+        solicitud.setSolicitante(solicitante);
+        solicitud.setCodeudor(codeudor);
+        solicitud.setValor(BigDecimal.ZERO); // Valor por defecto
+        solicitud.setEstado(estado);
+        solicitud.setObservacion(request.getObservacion());
+        solicitud.setCodigoRadicado(generarCodigoRadicado());
 
-        solicitudRepository.save(s);
+        solicitud = solicitudRepository.save(solicitud);
 
-        return s;
+        return new SolicitudResponseDTO(
+                solicitud.getId(),
+                solicitud.getFecha(),
+                solicitud.getCodigoRadicado()
+        );
     }
 
-    public Solicitud getById(Long id) {
-        return solicitudRepository.findById(id).orElse(null);
+    // Servicio 5: Validar token
+    @Transactional
+    public boolean validarToken(String token) {
+        LocalDateTime fechaLimite = LocalDateTime.now().minusMinutes(15);
+        Optional<Validacion> validacionOpt = validacionRepository.findValidToken(token, fechaLimite);
+
+        if (validacionOpt.isEmpty()) {
+            throw new RuntimeException("Token inválido o vencido");
+        }
+
+        Validacion validacion = validacionOpt.get();
+        validacion.setEstado("Validada");
+        validacionRepository.save(validacion);
+
+        return true;
+    }
+
+    private Persona crearPersona(SolicitudRequestDTO.PersonaDTO personaDTO) {
+        Persona persona = new Persona();
+        persona.setDocumento(personaDTO.getDocumento());
+        persona.setNombre(personaDTO.getNombre());
+        persona.setEmail(personaDTO.getEmail());
+        persona.setTelefono(personaDTO.getTelefono());
+        persona.setFechaNacimiento(personaDTO.getFechaNacimiento());
+        return personaRepository.save(persona);
+    }
+
+    private String generarCodigo(int longitud) {
+        String caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder codigo = new StringBuilder();
+        for (int i = 0; i < longitud; i++) {
+            int index = (int) (Math.random() * caracteres.length());
+            codigo.append(caracteres.charAt(index));
+        }
+        return codigo.toString();
+    }
+
+    private String generarCodigoRadicado() {
+        // Genera códigos como "R5344001" (8 caracteres)
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        return "R" + timestamp.substring(timestamp.length() - 7);
+    }
+
+    private Estado obtenerEstado(String descripcionEstado) {
+        return estadoRepository.findByDescripcion(descripcionEstado)
+                .orElseGet(() -> {
+                    // Si no existe, lo crea automáticamente
+                    Estado nuevoEstado = new Estado();
+                    nuevoEstado.setDescripcion(descripcionEstado);
+                    Estado estadoGuardado = estadoRepository.save(nuevoEstado);
+                    System.out.println("🆕 Estado creado automáticamente: " + descripcionEstado);
+                    return estadoGuardado;
+                });
     }
 }

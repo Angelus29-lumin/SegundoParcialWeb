@@ -8,43 +8,34 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import jakarta.persistence.*;
+import lombok.*;
 
-@Entity
-@Table
+import java.time.LocalDate;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Entity
+@Table(name = "persona")
 public class Persona {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(length = 10)
+    @Column(name = "documento", length = 10, nullable = false)
     private String documento;
 
-    @Column(length = 100)
+    @Column(name = "nombre", length = 100, nullable = false)
     private String nombre;
 
-    @Column(length = 50)
+    @Column(name = "email", length = 50, nullable = false)
     private String email;
 
-    @Column(length = 20)
+    @Column(name = "telefono", length = 10, nullable = false)
     private String telefono;
 
-    @Column(name = "fecha_nacimiento")
+    @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Persona)) return false;
-        Persona persona = (Persona) o;
-        return Objects.equals(documento, persona.documento);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(documento);
-    }
 }

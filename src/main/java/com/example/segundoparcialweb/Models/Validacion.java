@@ -8,54 +8,48 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table
+@NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Table(name = "validacion")
 public class Validacion {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(length = 50)
+    @Column(name = "email", length = 50, nullable = false)
     private String email;
 
-    @Column(length = 10)
+    @Column(name = "documento", length = 10, nullable = false)
     private String documento;
 
+    @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
 
-    @Column(length = 20)
-    private String estado; // Pendiente o Validada
+    @Column(name = "estado", length = 20, nullable = false)
+    private String estado;
 
-    @Column(length = 100)
-    private String token; // único
+    @Column(name = "token", length = 100, unique = true, nullable = false)
+    private String token;
 
-    @Column(length = 10)
-    private String codigo; // único
+    @Column(name = "codigo", length = 10, unique = true, nullable = false)
+    private String codigo;
 
-    private LocalDateTime creadoEn;
-
-    public Validacion() {}
-
-    @PrePersist
-    public void prePersist() {
-        creadoEn = LocalDateTime.now();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Validacion)) return false;
-        Validacion that = (Validacion) o;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
+    public Validacion(String email, String documento, LocalDateTime fecha,
+                      String estado, String token, String codigo) {
+        this.email = email;
+        this.documento = documento;
+        this.fecha = fecha;
+        this.estado = estado;
+        this.token = token;
+        this.codigo = codigo;
     }
 }

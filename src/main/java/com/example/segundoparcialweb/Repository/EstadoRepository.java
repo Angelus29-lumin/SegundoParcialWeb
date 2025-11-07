@@ -1,10 +1,12 @@
-package com.example.segundoparcialweb.Repositories;
+package com.example.segundoparcialweb.Repository;
 
 import com.example.segundoparcialweb.Models.Estado;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-public interface EstadoRepository extends JpaRepository<Estado,Long> {
+@Repository
+public interface EstadoRepository extends JpaRepository<Estado, Integer> {
     Optional<Estado> findByDescripcion(String descripcion);
 }

@@ -1,28 +1,29 @@
 package com.example.segundoparcialweb.DTO;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalDate;
+
+import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RegistroSolicitudRequest {
+public class SolicitudRequestDTO {
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class PersonaIn {
+    public static class PersonaDTO {
         private String documento;
         private String nombre;
         private String email;
         private String telefono;
-        private String fecha_nacimiento; // "YYYY-MM-DD"
+        private LocalDate fechaNacimiento;
+
     }
 
-    private PersonaIn solicitante;
-    private PersonaIn codeudor;
+    private PersonaDTO solicitante;
+    private PersonaDTO codeudor;
     private String observacion;
-    private Long valor;
+
 
 }

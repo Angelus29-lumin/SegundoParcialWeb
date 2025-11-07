@@ -1,14 +1,11 @@
 package com.example.segundoparcialweb.DTO;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CrearValidacionResponse {
+public class ValidacionResponseDTO {
     private String token;
     private String codigo;
-
-    }
+}
